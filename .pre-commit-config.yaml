@@ -1,0 +1,16 @@
+repos:
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.6.1
+    hooks:
+      - id: nbstripout
+  - repo: https://github.com/psf/black
+    rev: "24.4.0"
+    hooks:
+      - id: black-jupyter
+  - repo: local
+    hooks:
+      - id: no-data-products
+        name: data products, tables and figures stay on USDF
+        entry: "Data products, tables and figures must not be committed"
+        language: fail
+        files: '\.(parquet|npy|npz|fits|fits\.gz|h5|hdf5|csv|csv\.gz|png|jpe?g|gif|mp4)$'

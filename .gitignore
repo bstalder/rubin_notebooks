@@ -1,0 +1,42 @@
+# Large data files
+*.parquet
+*.csv.gz
+*.h5
+*.hdf5
+*.fits
+*.fits.gz
+*.bsp
+*.npz
+*.npy
+
+# Environment / secrets
+.env
+*-credentials.txt
+
+# PDFs (generated figures)
+*.pdf
+
+# Generated Z4 figures (regenerable from MTAOS_Z4_Focus_Trends.ipynb)
+earlyoperations/optical_psf/z4_*.png
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+clusters/.nbbuild/
+
+# Editors and local agent notes
+.vscode/
+CLAUDE.md
+
+# Data products, tables and figures stay on USDF, not in the repo
+earlyoperations/system_performance/data/
+earlyoperations/system_performance/allsky/figures/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mp4
+*.csv
+*.rtf
+earlyoperations/data/
