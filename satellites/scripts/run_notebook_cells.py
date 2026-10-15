@@ -6,7 +6,7 @@ REPO_ROOT = pathlib.Path(
 )
 ENV_FILE = REPO_ROOT / ".env"
 PATH_VARS = {"PYTHONPATH", "PATH", "LD_LIBRARY_PATH"}
-for line in (ENV_FILE.read_text().splitlines() if ENV_FILE.exists() else []):
+for line in ENV_FILE.read_text().splitlines() if ENV_FILE.exists() else []:
     line = line.strip()
     if not line or line.startswith("#") or "=" not in line:
         continue
@@ -31,9 +31,7 @@ client = NotebookClient(
     mini,
     timeout=1800,
     kernel_name="python3",
-    resources={
-        "metadata": {"path": str(REPO_ROOT / "satellites")}
-    },
+    resources={"metadata": {"path": str(REPO_ROOT / "satellites")}},
 )
 asyncio.run(client.async_execute())
 for (oi, _), mc in zip(ctr, mini.cells):

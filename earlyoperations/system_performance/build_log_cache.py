@@ -50,6 +50,7 @@ def engine(db):
     )
     return sqlalchemy.create_engine(url)
 
+
 def consdb():
     q = f"""select exposure_id, day_obs, seq_num, img_type, science_program, observation_reason,
         target_name, band, obs_start, obs_end, exp_time, altitude, azimuth, air_temp, pressure,
