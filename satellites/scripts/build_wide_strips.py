@@ -138,9 +138,7 @@ def extract(visit, norad, midpt, exptime, half=HALF):
 # ---- targets ----
 jobs = []
 # (a) ASCENT: all July-2025 DP2 passes  (the known deep null / stacking case)
-asc = pd.read_parquet(
-    DATA_DIR / "ascent_fov_hits.parquet"
-)
+asc = pd.read_parquet(DATA_DIR / "ascent_fov_hits.parquet")
 asc["t"] = pd.to_datetime(asc.exp_midpt, utc=True) if "exp_midpt" in asc else pd.NaT
 jul = (
     asc[(asc.night >= "2025-07-01") & (asc.night <= "2025-07-31")]
@@ -174,9 +172,7 @@ for nid in (62004, 61997):
             )
         )
 # (c) POSITIVE CONTROL: GOES 19, known bright trail -> must be recovered
-gh = pd.read_parquet(
-    DATA_DIR / "goes19_fov_hits.parquet"
-)
+gh = pd.read_parquet(DATA_DIR / "goes19_fov_hits.parquet")
 for _, r in gh.nsmallest(2, "sep_deg").iterrows():
     jobs.append(
         (
@@ -236,7 +232,5 @@ for i, (tag, nid, vis, mid, expt, band) in enumerate(jobs):
         )
     except Exception as ex:
         print(f"[{i+1}/{len(jobs)}] {key} FAIL {type(ex).__name__}: {ex}", flush=True)
-pd.DataFrame(rows).to_parquet(
-    DATA_DIR / "geo_wide_index.parquet"
-)
+pd.DataFrame(rows).to_parquet(DATA_DIR / "geo_wide_index.parquet")
 print("saved index", len(rows), flush=True)

@@ -241,10 +241,6 @@ for i, (_, r) in enumerate(sel.iterrows()):
     except Exception as e:
         print(f"[{i+1}] {r.sat_name[:20]} FAIL {type(e).__name__}: {e}", flush=True)
     if rows and (i + 1) % 10 == 0:
-        pd.DataFrame(rows).to_parquet(
-            CATALOG
-        )
-pd.DataFrame(rows).to_parquet(
-    CATALOG
-)
+        pd.DataFrame(rows).to_parquet(CATALOG)
+pd.DataFrame(rows).to_parquet(CATALOG)
 print("saved catalog", len(rows), flush=True)
