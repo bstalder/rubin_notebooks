@@ -15,11 +15,11 @@ OUT="$ALLSKY_OUT"
 LIST=${1:?night list}
 cd "$SCRIPT_DIR"
 for d in $(cat "$LIST"); do rm -f $OUT/frames_regated/$d.parquet; done
-$PYTHON -E -P regate_frames.py $(cat "$LIST") 2>&1 | grep -vi warn | tail -1
-$PYTHON -E -P build_completeness.py 2>&1 | grep -vi warn | tail -12
+$PYTHON -E regate_frames.py $(cat "$LIST") 2>&1 | grep -vi warn | tail -1
+$PYTHON -E build_completeness.py 2>&1 | grep -vi warn | tail -12
 rm -f $OUT/cloud/*.parquet $OUT/cloud_pix/*.npz
-$PYTHON -E -P cloud_metric.py 2>&1 | grep -vi warn | tail -1
-$PYTHON -E -P - <<'PY' 2>&1 | grep -vi warn
+$PYTHON -E cloud_metric.py 2>&1 | grep -vi warn | tail -1
+$PYTHON -E - <<'PY' 2>&1 | grep -vi warn
 import os, pandas as pd, glob
 OUT = os.environ["ALLSKY_OUT"]
 fr = pd.concat(pd.read_parquet(f) for f in sorted(glob.glob(f"{OUT}/frames_regated/*.parquet"))); fr = fr[fr.reduced == True]
@@ -29,5 +29,5 @@ pv = fr.groupby("day_obs").pipe_version.first() if "pipe_version" in fr else pd.
 print(f"{len(fr)} reduced frames, {fr.day_obs.nunique()} nights; usable geometry {ok.mean():.3f}; nights by pipe_version: {pv.fillna(1).astype(int).value_counts().to_dict()}")
 cl = pd.concat(pd.read_parquet(f).assign(day_obs=int(f.split('/')[-1][:8])) for f in sorted(glob.glob(f"{OUT}/cloud/*.parquet"))); cl.to_parquet(f"{OUT}/index/cloud_all_frames.parquet"); print("cloud frames:", len(cl), "nights:", cl.day_obs.nunique())
 PY
-$PYTHON -E -P build_index_tables.py 2>&1 | grep -vi warn | tail -1
-$PYTHON -E -P build_nightly.py 2>&1 | grep -vi warn | tail -3
+$PYTHON -E build_index_tables.py 2>&1 | grep -vi warn | tail -1
+$PYTHON -E build_nightly.py 2>&1 | grep -vi warn | tail -3

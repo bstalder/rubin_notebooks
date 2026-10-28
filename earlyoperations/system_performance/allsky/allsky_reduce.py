@@ -23,12 +23,16 @@ v4 (2026-10-10): every frame records its camera unit (EXIF body/lens serial + fo
 each unit is seeded from the nearest solved night of the SAME unit (the camera was swapped 6 times, see
 build_unit_history.py); frames whose EXIF clock is >2 days from the directory date are skipped (bad_exif_time).
 v5 (2026-10-10): looser DAOStarFinder shape cuts (DAO_SHAPE); otherwise identical to v4.
+v6 (2026-10-15): plate-scale scan (SCALE_SCAN, +-12 %) before the refine when the running solution matches poorly,
+and seeds are matched on body + lens only (the EXIF focal length is a rounded zoom reading): the 8-15 mm zoom of
+8323/0552 creeps after the 2026-10-10 restart (8 -> 9 mm tag on 10-12; a 9-mm seed came from 2024, before the re-mount).
 Run:  python allsky_reduce.py 20260520 20260521 --workers 32
 """
 import os, sys, io, json, time, argparse, pathlib, warnings, traceback
 import numpy as np, pandas as pd
 
 from allsky_paths import ALLSKY_OUT
+from allsky_units import optics
 
 warnings.filterwarnings("ignore")
 os.environ.setdefault(
@@ -52,11 +56,13 @@ BLACK = 2049.0
 MOON_EXCL_DEG = 25.0  # catalog stars closer than this to the moon are excluded from astrometry and completeness
 MATCH_MAX = 6000  # match against (up to) this many sharp detections, brightest first
 SITE = dict(lat=-30.2446, lon=-70.7494, height=2663.0)
-PIPE_VERSION = 5
+PIPE_VERSION = 6
 # DAOStarFinder shape cuts. v1-v4 used sharpness 0.1-1.2, roundness +-0.8, which rejects the soft, elongated off-axis
 # PSFs of the defocused configurations (FWHM 2.6-3.5 px): V<5 clear-sky completeness 0.67-0.84 there, 0.53-0.72 at
 # alt 20-30 deg. These cuts give 0.90-1.00 in every configuration for +0.005-0.014 chance matches (2026-10-10 test).
 DAO_SHAPE = dict(sharplo=0.05, sharphi=2.0, roundlo=-1.5, roundhi=1.5)
+# v6: plate-scale factors tried before the refine when the running solution matches < 60 % of bright stars
+SCALE_SCAN = np.r_[np.arange(0.88, 0.999, 0.005), np.arange(1.005, 1.121, 0.005)]
 
 
 def unit_key(body, lens, focal):
@@ -238,9 +244,9 @@ class Reducer:
 
     def use_unit(self, unit):
         """Switch the running solution to this unit's seed when the frame comes from a different camera unit."""
-        if unit == self.unit or unit not in self.unit_sols:
+        if optics(unit) == optics(self.unit) or optics(unit) not in self.unit_sols:
             return
-        s = self.unit_sols[unit]
+        s = self.unit_sols[optics(unit)]
         self.sol = dict(s)
         self.p = np.array(
             [s["cx"], s["cy"], *s["rot_vec"], s["f_px_per_rad"], s["k1"], s["k2"]]
@@ -248,7 +254,9 @@ class Reducer:
         self.flip = s["flip"]
         self.unit = unit
 
-    def refine_astrometry(self, stars, alt, az, vmag, disk_c=None, moon=None):
+    def refine_astrometry(
+        self, stars, alt, az, vmag, disk_c=None, moon=None, scan=True
+    ):
         """Refine the fisheye solution on bright stars. Returns (p, n_matched@3px, rms, mode).
         mode: refine (small update of the running solution) | bootstrap (coarse search after the camera moved)
               | failed (too few stars: clouds / moon; the running solution is returned unchanged).
@@ -277,6 +285,20 @@ class Reducer:
             return ok, i, d
 
         ok, i, d = matched(p, flip, 6.0)
+        scanned = False
+        if scan and ok.sum() < 0.6 * nb:
+            # plate-scale scan: the 8-15 mm zoom creeps (2026-10-11..14: f 759 -> 842 px/rad, ~1 %/h on 10-11),
+            # which the running solution cannot follow from a 6-px match; keep the scale only if it matches more
+            n0, best = ok.sum(), None
+            for k in SCALE_SCAN:
+                pp = p.copy()
+                pp[5] *= k
+                okk, ii, dd = matched(pp, flip, 6.0)
+                if okk.sum() > (best[1].sum() if best else n0):
+                    best = (pp, okk, ii, dd)
+            # a moonlit / cloudy frame's chance matches can favour a wrong scale: require a clear gain
+            if best and best[1].sum() >= max(1.5 * n0, n0 + 8, 10, 0.25 * nb):
+                (p, ok, i, d), scanned = best, True
         mode = "refine"
         if ok.sum() < max(10, 0.25 * nb):
             mode = "bootstrap"
@@ -344,6 +366,12 @@ class Reducer:
         n = int(ok.sum())
         rms = float(np.sqrt(np.mean(d[ok] ** 2))) if n else np.nan
         if n < max(10, 0.25 * nb) or not np.isfinite(rms) or rms > 2.0:
+            if (
+                scanned
+            ):  # the scanned scale led nowhere: retry as v5 (refine / bootstrap from the running solution)
+                return self.refine_astrometry(
+                    stars, alt, az, vmag, disk_c, moon, scan=False
+                )
             return self.p.copy(), n, rms, "failed"
         if (
             n >= 40 and rms < 1.2
@@ -872,7 +900,8 @@ def load_solution(day_obs):
 
 
 def load_solutions(day_obs, units_by_night=None):
-    """(default seed, {unit: seed}) -- each unit seen tonight is seeded from the nearest solved night of the SAME unit.
+    """(default seed, {body/lens: seed}) -- each unit seen tonight is seeded from the nearest solved night of the SAME
+    body + lens (any focal-length tag; the plate-scale scan absorbs the zoom).
 
     Solutions written before v4 carry no unit tag; their unit is the one seen on that night (single-unit nights only).
     """
@@ -883,7 +912,7 @@ def load_solutions(day_obs, units_by_night=None):
         else []
     )
     by_dist = sorted(sols, key=lambda f: abs(int(f.stem) - day_obs))
-    tonight = units_by_night.get(day_obs, [])
+    tonight = {optics(u) for u in units_by_night.get(day_obs, [])}
     unit_sols, default = {}, None
     for f in by_dist:
         if default is not None and all(u in unit_sols for u in tonight):
@@ -897,10 +926,10 @@ def load_solutions(day_obs, units_by_night=None):
             seen = units_by_night.get(int(f.stem), [])
             u = seen[0] if len(seen) == 1 else None
         s["unit"] = u
-        if default is None and (not tonight or u in tonight):
+        if default is None and (not tonight or optics(u) in tonight):
             default = s
-        if u in tonight and u not in unit_sols:
-            unit_sols[u] = s
+        if optics(u) in tonight and optics(u) not in unit_sols:
+            unit_sols[optics(u)] = s
     if default is None:
         default = json.load(open(EPOCH_SOL))
     return default, unit_sols

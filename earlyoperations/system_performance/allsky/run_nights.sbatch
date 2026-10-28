@@ -23,4 +23,4 @@ PYTHON="${PYTHON:-/sdf/group/rubin/sw/conda/envs/lsst-scipipe-13.0.0/bin/python3
 cd "$SCRIPT_DIR"
 NIGHTS=$(awk -v i=${SLURM_ARRAY_TASK_ID:-0} -v n=${SLURM_ARRAY_TASK_COUNT:-1} 'NR % n == i' "$LIST" | tr '\n' ' ')
 echo "$(hostname) task ${SLURM_ARRAY_TASK_ID:-0}/${SLURM_ARRAY_TASK_COUNT:-1}: $NIGHTS"
-$PYTHON -E -P allsky_reduce.py $NIGHTS --workers 60 ${ALLSKY_EXTRA:-} 2>&1 | grep --line-buffered -v -i "warn\|datetime\|obsgeo"
+$PYTHON -E allsky_reduce.py $NIGHTS --workers 60 ${ALLSKY_EXTRA:-} 2>&1 | grep --line-buffered -v -i "warn\|datetime\|obsgeo"

@@ -5,6 +5,11 @@ v4 (2026-10-10): keys are "YYYYMM|unit" (unit = body/lens serial tails + focal l
 a whole-unit table "unit" and the disk-radius epoch tables as fallbacks. A month that contains a camera swap used to
 get ONE table whose clear-sky reference (top 35 % by stars detected) comes mostly from the sharper unit, which left a 0.1-0.3 floor on the softer unit's clear
 nights (e.g. 2022-05: q10 0.29 vs 0.00). Months are still needed within a unit because focus drifts between visits.
+v6 (2026-10-15): the unit in the keys is the SERVICE STINT, body/lens + first night ("YYYYMM|8323/0552@20261010", see
+allsky_units.stint_keys). EXIF FocalLength is the zoom reading rounded to 1 mm and flips 8 <-> 9 on one mount (2026-10-12),
+which split a month into two tables and sent the "/9" frames to a 2021-24 reference; and the same body + lens came back
+three times (2022-05, 2023-11, 2026-10), re-mounted and refocused each time, so a body/lens table would pool all three.
+A stint table needs STINT_MIN dark frames (one clear night is ~500), a month table still 1500.
 
 Completeness follows the camera focus state, which changed independently of focal length (e.g. Feb-May 2022 FWHM 4 px vs
 6.5 px otherwise), so the reference is built per year-month; months with too few reference frames fall back to the
@@ -21,6 +26,7 @@ Output: calib/clear_sky_completeness_v2.parquet with columns epoch, Vlo..sky_hi,
 """
 import glob, os, pathlib, warnings, numpy as np, pandas as pd, h5py, healpy as hp, time
 from allsky_paths import ALLSKY_OUT
+from allsky_units import optics, stint_keys
 
 warnings.filterwarnings("ignore")
 OUT = ALLSKY_OUT
@@ -53,9 +59,16 @@ fr = pd.concat(
 fr = fr[fr.reduced == True].copy()
 ok = (fr.ast_mode != "failed") | fr.ast_ok.fillna(False).astype(bool)
 fr["epoch"] = pd.cut(fr.disk_R, EPOCH_EDGES, labels=EPOCH_NAMES)
-fr["unit"] = (
-    fr.unit if "unit" in fr else pd.Series(index=fr.index, dtype=object)
-).fillna("unknown")
+STINT = stint_keys()
+fr["unit"] = [
+    STINT.get((int(d), optics(u)), optics(u))
+    for d, u in zip(
+        fr.day_obs,
+        (fr.unit if "unit" in fr else pd.Series(index=fr.index, dtype=object)).fillna(
+            "unknown"
+        ),
+    )
+]  # service stint (see v6 note)
 fr["night"] = (fr.night if "night" in fr else fr.day_obs).fillna(fr.day_obs).astype(int)
 SYSTEM_DATA = pathlib.Path(
     os.environ.get(
@@ -78,6 +91,7 @@ ref_epoch = pd.Series(False, index=fr.index)
 ref_month = pd.Series(False, index=fr.index)
 ref_unit = pd.Series(False, index=fr.index)
 TOP = 0.35  # clearest 35 % of moonless dark frames are the clear-sky reference
+STINT_MIN = 800  # dark frames for a whole-stint table (was 2000 per unit; every stint before 2026-10 has > 50 k)
 for ep in EPOCH_NAMES:
     sel = dark & (fr.epoch == ep)
     if sel.sum() < 2000:
@@ -89,7 +103,7 @@ for ep in EPOCH_NAMES:
     )
 for un in UNITS:
     sel = dark & (fr.unit == un)
-    if sel.sum() < 2000:
+    if sel.sum() < STINT_MIN:
         continue
     thr = fr.fd4_far[sel].quantile(1 - TOP)
     ref_unit |= sel & (fr.fd4_far >= thr)

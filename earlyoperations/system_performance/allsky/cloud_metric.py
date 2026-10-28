@@ -2,8 +2,8 @@
 """Completeness-weighted cloud fraction per frame and per HEALPix pixel.
 
 For each frame: expected detections = sum over catalog stars (V<5.5, alt>20, >25 deg from the moon) of
-P_clear(detect | V, alt, local sky) from calib/clear_sky_completeness_v2.parquet (per camera unit x month, falling back to the
-same unit's nearest month within 3 months, then the whole-unit table, then the lens epoch; see build_completeness.py). Cloud index = 1 - observed/expected,
+P_clear(detect | V, alt, local sky) from calib/clear_sky_completeness_v2.parquet (per service stint x month, falling back to the
+same stint's nearest month within 3 months, then the whole-stint table, then the lens epoch; see build_completeness.py). Cloud index = 1 - observed/expected,
 clipped to [0, 1]. Also per NSIDE-8 pixel (coarser than the NSIDE-32 maps so each cell has enough stars).
 
 Reads matches/ + maps/ + frames/ (or frames_regated/ when present); writes cloud/<day_obs>.parquet with
@@ -13,6 +13,7 @@ Reads matches/ + maps/ + frames/ (or frames_regated/ when present); writes cloud
 import os, sys, glob, pathlib, warnings, numpy as np, pandas as pd, h5py, healpy as hp
 from concurrent.futures import ProcessPoolExecutor
 from allsky_paths import ALLSKY_OUT
+from allsky_units import PROXY, optics, stint_keys
 
 warnings.filterwarnings("ignore")
 OUT = ALLSKY_OUT
@@ -27,6 +28,7 @@ VB = np.array(sorted(TAB.Vlo.unique().tolist() + [TAB.Vhi.max()]))
 AB = np.array(sorted(TAB.alt_lo.unique().tolist() + [TAB.alt_hi.max()]))
 SB = np.array(sorted(TAB.sky_lo.unique().tolist() + [TAB.sky_hi.max()]))
 PE = {}
+STINT = stint_keys()
 
 
 def raw_table(T):
@@ -72,7 +74,8 @@ def _months(ym):
 
 
 def table_for(night, disk_R, unit=None):
-    """Unit-month table, else the same unit's nearest month (<=3 months), else the unit table, else the lens epoch."""
+    """Unit-month table, else the same unit's nearest month (<=3 months), else the unit table, else the PROXY stint's
+    table (allsky_units), else the lens epoch."""
     ym = str(night // 100)
     if unit is not None:
         if f"{ym}|{unit}" in PE:
@@ -87,6 +90,10 @@ def table_for(night, disk_R, unit=None):
             return near[0][1], PE[near[0][1]]
         if unit in PE:
             return unit, PE[unit]
+        if (
+            PROXY.get(unit) in PE
+        ):  # young stint: reference from a stint with the same focus / plate scale
+            return PROXY[unit], PE[PROXY[unit]]
     ep = (
         EPOCH_NAMES[
             min(
@@ -168,7 +175,10 @@ def _one(day_obs, dst):
     ab = np.clip(np.digitize(m.alt.values, AB) - 1, 0, len(AB) - 2)
     sb = np.clip(np.digitize(np.nan_to_num(skyv, nan=1.0), SB) - 1, 0, len(SB) - 2)
     grp = fr[["seq", "night", "unit", "disk_R"]].copy()
-    grp["unit"] = grp.unit.where(grp.unit.notna(), None)
+    grp["unit"] = [
+        STINT.get((int(day_obs), optics(u)), optics(u)) if u else None
+        for u in grp.unit.where(grp.unit.notna(), None)
+    ]  # completeness tables are per service stint (allsky_units.stint_keys)
     key_of_seq, pexp = {}, np.full(len(m), np.nan)
     mseq = m.seq.values
     for (nt, un), gg in grp.groupby(["night", grp.unit.fillna("")]):

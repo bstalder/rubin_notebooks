@@ -11,7 +11,7 @@ bisected to the exact frame.  A swap-and-swap-back within one night would be mis
 Input : index/frame_index.parquet (build_frame_index.py)
 Output: index/unit_nights.parquet  (day_obs, first/last frame serials, n_frames, unit per frame range)
         index/unit_epochs.parquet  (one row per contiguous unit epoch with frame counts)
-Run with `python3 -E -P` (exifread lives in ~/.local).
+Run with `python3 -E` (not `-P`: the script directory must stay on sys.path for allsky_paths).
 """
 import io, os, pathlib, sys
 from concurrent.futures import ThreadPoolExecutor
