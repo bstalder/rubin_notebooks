@@ -4,6 +4,7 @@
 set -e
 PY=/sdf/group/rubin/sw/conda/envs/lsst-scipipe-13.0.0/bin/python3
 cd "${ROSP11_DIR:-$HOME/notebooks/sp_notebooks/tracking_hub/ops/rosp-11_time_loss_accounting}"
+export ROSP11_WRITE_RESULTS=1  # the notebooks only write their result files when asked
 $PY - <<'PY'
 import asyncio, nbformat, time
 from nbclient import NotebookClient
