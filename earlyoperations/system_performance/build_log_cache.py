@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Dump the non-EFD inputs for Weather_Downtime_Analysis.ipynb into data/.
+"""Dump the non-EFD inputs for the weather-downtime notebook into $SYSTEM_PERFORMANCE_DATA_DIR (default data/).
 
 Sources (PostgreSQL access is configured with CONSDB_HOST, CONSDB_USER, and
 PGPASSFILE environment variables):
@@ -23,7 +23,7 @@ from astropy.time import Time
 
 warnings.filterwarnings("ignore")
 HERE = pathlib.Path(__file__).resolve().parent
-DATA = HERE / "data"
+DATA = pathlib.Path(os.environ.get("SYSTEM_PERFORMANCE_DATA_DIR", HERE / "data"))
 DATA.mkdir(exist_ok=True)
 HOST = os.environ["CONSDB_HOST"]
 DB_USER = os.environ["CONSDB_USER"]

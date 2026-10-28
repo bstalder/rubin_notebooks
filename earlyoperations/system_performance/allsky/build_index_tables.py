@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Per-night summary tables read by AllSky_Cloud_Analysis.ipynb, keyed by the true Rubin night (frames' `night` column).
+"""Per-night summary tables read by allsky_cloud_analysis.ipynb (sp_notebooks, ROSP-11), keyed by the true Rubin night (frames' `night` column).
 
   index/cloud_pix8_nightly.parquet  nightly mean cloud index per NSIDE-8 pixel (p0..p767; NaN where < 20 frames)   -> §5.1
   index/streaks_nightly.parquet     streak counts / lengths per night                                               -> §6

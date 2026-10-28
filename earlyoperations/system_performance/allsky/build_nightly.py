@@ -63,7 +63,7 @@ cl[
     ]
 ].sort_values("mjd").to_parquet(
     SP / "allsky_cloud_frames.parquet", index=False
-)  # slim per-frame copy read by ../Weather_Downtime_Analysis.ipynb
+)  # slim per-frame copy read by the weather-downtime notebook (sp_notebooks, ROSP-11)
 dark = cl[cl.sun_alt < -12].copy()
 dark["clear"] = dark.cloud_idx < 0.1
 g = dark.groupby("day_obs")

@@ -4,11 +4,13 @@ Observatory-level performance analyses (as opposed to the subsystem studies in `
 
 ## allsky/ — allskycam (all-sky camera) cloud record
 
-Reduction of the Canon all-sky camera archive (2021-07 →) into a measured per-frame cloud index, plus `AllSky_Cloud_Analysis.ipynb` (flag validation, nowcast/DREAM/CTIO comparison, five-year climatology, transparency and streak by-products). The allskycam is the primary cloud input of the downtime notebook below (`allsky/build_nightly.py` writes `data/allsky_cloud_frames.parquet` for it). See `allsky/README.md`.
+Reduction of the Canon all-sky camera archive (2021-07 →) into a measured per-frame cloud index, analysed by `allsky_cloud_analysis.ipynb` ([sp_notebooks ROSP-11](https://github.com/lsst/sp_notebooks/tree/main/tracking_hub/ops/rosp-11_time_loss_accounting)) (flag validation, nowcast/DREAM/CTIO comparison, five-year climatology, transparency and streak by-products). The allskycam is the primary cloud input of the downtime notebook below (`allsky/build_nightly.py` writes `data/allsky_cloud_frames.parquet` for it). See `allsky/README.md`.
 
 **2026-10-04:** 425 nights whose v1 astrometric solution (median rms > 1.4 px) left a flat 0.3–0.6 index floor on clear skies were re-reduced with v3 (`index/nights_rerun_v3_rms.txt`) and all products rebuilt. Five-year fraction of dark time with index > 0.3: **0.18** (0.14 at > 0.5); the 0.24 quoted earlier was the artefact. The downtime notebook gates the 10 remaining high-rms nights.
 
-## Weather_Downtime_Analysis.ipynb
+## Weather downtime analysis
+
+`weather_downtime_analysis.ipynb` and `allsky_cloud_analysis.ipynb` moved on 2026-10-28 to [lsst/sp_notebooks `tracking_hub/ops/rosp-11_time_loss_accounting/`](https://github.com/lsst/sp_notebooks/tree/main/tracking_hub/ops/rosp-11_time_loss_accounting) as diagnostics supporting ROSP-11. The cache builders below and the allsky reduction stay here; both sides read and write `SYSTEM_PERFORMANCE_DATA_DIR` (USDF: `/sdf/data/rubin/user/stalder/system_performance_data`; default `data/` here) and `ALLSKY_OUT`.
 
 Weather downtime for Simonyi/LSSTCam, day_obs 2025-04-15 → 2026-07-13 (cut before the July 2026 storm).
 
@@ -19,7 +21,7 @@ Weather downtime for Simonyi/LSSTCam, day_obs 2025-04-15 → 2026-07-13 (cut bef
 
 Outputs: `data/weather_downtime_results.json` (now with a `dream` block), `data/dream_nightly.parquet`, `data/weather_downtime_monthly_climatology.csv`, `data/nightly_attribution_20250415_20260713.parquet` (now with `class`, `class_nowcast`, `cam_frac`, `cam_frac50`, `cam_proxy_h`, `nowcast_proxy_h`).
 
-### Rebuilding the caches (all under `data/`, parquet/CSV are git-ignored)
+### Rebuilding the caches (under `$SYSTEM_PERFORMANCE_DATA_DIR`, default `data/`; parquet/CSV are git-ignored)
 
 ```
 PY=/sdf/group/rubin/sw/conda/envs/lsst-scipipe-13.0.0/bin/python3
@@ -31,4 +33,4 @@ $PY allsky/build_dream_dense.py # every DREAM cloud_sys map from the LFA (387k, 
 
 Needs authorized PostgreSQL credentials through the `PGPASSFILE` environment variable,
 plus `CONSDB_HOST` and `CONSDB_USER`; EFD access is selected with `EFD_CLIENT_NAME`.
-Run the notebook with nbclient / the lsst-scipipe-13.0.0 kernel; it reads only the caches and runs in ~1 min.
+Run the notebooks with nbclient / the lsst-scipipe-13.0.0 kernel (`allsky/rerun_notebooks.sh` runs both); they read only the caches and run in ~1 min.

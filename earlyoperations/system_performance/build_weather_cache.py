@@ -2,7 +2,8 @@
 """Build 1-minute environmental caches from the USDF EFD for the weather-downtime analysis.
 
 Server-side InfluxQL aggregation (GROUP BY time(1m)) in 10-day chunks, checkpointed per
-chunk under data/_chunks/, then concatenated into one parquet per stream in data/.
+chunk under data/_chunks/, then concatenated into one parquet per stream in data/
+(data/ is $SYSTEM_PERFORMANCE_DATA_DIR when set).
 
 Streams (all 1-min bins, UTC index):
   weather_tower   lsst.sal.ESS.* salIndex 301      2023-02-07 .. 2026-07-20  (wind, T, RH, Td, P)
@@ -18,13 +19,13 @@ Streams (all 1-min bins, UTC index):
 
 Run with:  /sdf/group/rubin/sw/conda/envs/lsst-scipipe-13.0.0/bin/python3 build_weather_cache.py [stream ...]
 """
-import asyncio, pathlib, sys, warnings, time
+import asyncio, os, pathlib, sys, warnings, time
 import pandas as pd, numpy as np
 from lsst_efd_client import EfdClient
 
 warnings.filterwarnings("ignore")
 HERE = pathlib.Path(__file__).resolve().parent
-DATA = HERE / "data"
+DATA = pathlib.Path(os.environ.get("SYSTEM_PERFORMANCE_DATA_DIR", HERE / "data"))
 CH = DATA / "_chunks"
 CH.mkdir(parents=True, exist_ok=True)
 T_END = "2026-07-20"  # everything after the 2026-07-13 cutoff is kept only for context

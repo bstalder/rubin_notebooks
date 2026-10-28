@@ -9,7 +9,8 @@ Per night this script writes under OUT/dream_dense/:
   <day_obs>_pix8.npz       mjd[n], ext8[n, 768] float16 mean extinction per NSIDE-8 HORIZON cell (RING; theta = zenith angle, phi = az; nan where < 8 visible NSIDE-32 pixels)
   <day_obs>_exp.parquet    LSSTCam science exposures of the night: nearest map (|dt| ≤ 90 s), median DREAM extinction in a 1.75° disc around the pointing (equatorial, no rotation needed)
   <day_obs>_cells.parquet  allskycam frames of the night: nearest map (|dt| ≤ 60 s), per-frame NSIDE-8 cell comparison (n_cells, r, 2×2 counts cam>0.5 × dream>0.3, means)
-Then concatenates into ../data/dream_maps.parquet, ../data/dream_lsstcam_exposures.parquet, ../data/dream_allskycam_cells.parquet.
+Then concatenates into dream_maps.parquet, dream_lsstcam_exposures.parquet, dream_allskycam_cells.parquet under
+$SYSTEM_PERFORMANCE_DATA_DIR (default ../data).
 
 Horizon rotation: the ICRS RA/Dec of every horizon pixel centre is computed once per night with astropy at the night's median time; other maps rotate
 it in RA by the change in apparent local sidereal time (nutation/aberration drift over a night ≪ the 1.8° pixel). Verified against the full astropy
@@ -28,7 +29,12 @@ os.environ.setdefault("OMP_NUM_THREADS", "1")
 OUT = ALLSKY_OUT
 DD = OUT / "dream_dense"
 DD.mkdir(exist_ok=True)
-DATA = pathlib.Path(__file__).resolve().parent.parent / "data"
+DATA = pathlib.Path(
+    os.environ.get(
+        "SYSTEM_PERFORMANCE_DATA_DIR",
+        pathlib.Path(__file__).resolve().parent.parent / "data",
+    )
+)
 NS = 32
 NPIX = hp.nside2npix(NS)
 TH_H, PH_H = hp.pix2ang(NS, np.arange(NPIX))

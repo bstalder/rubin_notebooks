@@ -2,7 +2,7 @@
 
 Turns the 2021-07 → present all-sky archive into a site cloud / transparency / sky-brightness record.
 
-**Analysis notebook: `AllSky_Cloud_Analysis.ipynb`** — validation of the cloud index against the Scheduler WEATHER flag, comparison with the meteoblue nowcast, DREAM and the CTIO cloud DB, 2021–26 climatology, transparency / sky-brightness / streak by-products, and the revised scheduler-simulation input. Outputs: `../data/allsky_cloud_results.json`, `../data/allsky_monthly_cloud_climatology.csv`, `../data/allsky_nightly_summary.parquet`.
+**Analysis notebook: `allsky_cloud_analysis.ipynb`** (in [lsst/sp_notebooks, ROSP-11](https://github.com/lsst/sp_notebooks/tree/main/tracking_hub/ops/rosp-11_time_loss_accounting), next to the weather-downtime notebook) — validation of the cloud index against the Scheduler WEATHER flag, comparison with the meteoblue nowcast, DREAM and the CTIO cloud DB, 2021–26 climatology, transparency / sky-brightness / streak by-products, and the revised scheduler-simulation input. Outputs: `../data/allsky_cloud_results.json`, `../data/allsky_monthly_cloud_climatology.csv`, `../data/allsky_nightly_summary.parquet`.
 Supporting scripts: `sample_dream.py` (DREAM cloud maps from the LFA, 1 per 10 min, rotated to horizon coords; superseded for analysis by `build_dream_dense.py`, which takes **every** map at ~32 s cadence and also writes the DREAM extinction at each LSSTCam pointing and a cell-by-cell comparison with the allskycam into `../data/dream_*.parquet` for §4.5 of the downtime notebook), `build_nightly.py` (per-night join of allskycam products with Scheduler/EFD/ConsDB/nowcast/DREAM records → `index/allsky_nightly.parquet`).
 
 ## allskycam vs DREAM side-by-side (`fetch_night_demo.py`, `render_cam_dream.py`)
