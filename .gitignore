@@ -31,7 +31,6 @@ CLAUDE.md
 
 # Data products, tables and figures stay on USDF, not in the repo
 earlyoperations/system_performance/data/
-earlyoperations/system_performance/allsky/figures/
 *.png
 *.jpg
 *.jpeg

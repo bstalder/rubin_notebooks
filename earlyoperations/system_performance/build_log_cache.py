@@ -80,7 +80,7 @@ def consdb():
         zp[c] = pd.to_datetime(zp[c], utc=True)
     zp.to_parquet(DATA / "consdb_lsstcam_zp_20250415_20260713.parquet", index=False)
     print("consdb zero points", zp.shape)
-    # science pointings (RA/Dec) for the DREAM field-extinction join (allsky/build_dream_dense.py)
+    # science pointings (RA/Dec) for the DREAM field-extinction join (build_dream_dense.py, bstalder/rubin_allskycam)
     pt = pd.read_sql(
         "select exposure_id, s_ra, s_dec, altitude, azimuth from cdb_lsstcam.exposure where img_type='science' and day_obs between 20250415 and 20260713",
         engine("exposurelog"),

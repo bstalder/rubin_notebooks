@@ -12,7 +12,7 @@ Personal Rubin Observatory development notebooks: camera testing, assembly, inte
 - **earlyoperations/dome_and_wind/**: wind vs dome pointing, dome-closed wind blocking, dome airflow, the dome-seeing model, and wind-loading / ingression operational limits, with their cache builders.
 - **earlyoperations/optical_psf/**: ConsDB+EFD PSF diagnostics, guider drift/motion RMS, MTAOS wavefront-error Zernikes and Z4 focus trends, the focal-plane PSF map, IQ vs Sun elevation, the system IQ budget, and mirror reflectivity/scattering.
 - **earlyoperations/engineering/**: glycol line pressure-drop diagnosis.
-- **earlyoperations/system_performance/**: weather downtime and the all-sky camera cloud record. `allsky/README.md` describes the reduction pipeline and the batch runner `allsky/run_nights.sbatch`.
+- **earlyoperations/system_performance/**: weather-downtime cache builders. The all-sky camera reduction moved to [bstalder/rubin_allskycam](https://github.com/bstalder/rubin_allskycam) on 2026-10-30.
 - **satellites/**: GEO satellite flux / ASCENT brightness analysis and the `scripts/` it uses.
 
 ## Running on USDF
@@ -23,20 +23,13 @@ Use the shared stack interpreter or kernel, `lsst-scipipe-13.0.0`, for example `
 |---|---|
 | `PGPASSFILE`, `CONSDB_HOST`, `CONSDB_USER` | ConsDB (PostgreSQL) queries |
 | `EFD_CLIENT_NAME` | EFD instance selection |
-| `AWS_SHARED_CREDENTIALS_FILE` | S3 access for the all-sky / LFA archives |
-| `ALLSKY_OUT` | all-sky products root (default `<repo>/data/allsky`, see `allsky/allsky_paths.py`) |
+| `AWS_SHARED_CREDENTIALS_FILE` | S3 access for the LFA archives |
 | `RUBIN_NOTEBOOKS_ROOT` | repository root, if notebooks are run from outside the checkout |
 | `LSST_TS_REPOS_DIR`, `RUBIN_SIM_DATA_DIR` | optional local `ts_*` packages and rubin_sim data |
 
 Some notebooks load a `.env` holding the stack paths and the variables above. `earlyoperations/create_dot_env.py` generates one: run it from an activated stack and write the result next to the notebooks. `.env` is git-ignored.
 
-All-sky batch reduction, submitted from `earlyoperations/system_performance/allsky/`:
-
-```
-export ALLSKY_OUT=/path/to/allsky          # optional; default <repo>/data/allsky
-export SBATCH_OUTPUT="$ALLSKY_OUT/logs/allsky_%A_%a.out"   # optional; default: submit directory
-sbatch --array=0-5 run_nights.sbatch "$ALLSKY_OUT/index/nights_rest.txt"
-```
+The all-sky batch reduction (`run_nights.sbatch` etc.) is in [bstalder/rubin_allskycam](https://github.com/bstalder/rubin_allskycam).
 
 ## Development setup
 
