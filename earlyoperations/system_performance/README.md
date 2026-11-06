@@ -17,9 +17,18 @@ Weather downtime for Simonyi/LSSTCam, day_obs 2025-04-15 → 2026-07-13 (cut bef
 1. Environmental envelope in which science data were actually taken (ESS weather tower + allskycam cloud index + meteoblue cloud nowcast + DIMM, matched per exposure).
 2. Attribution of every night without science to weather vs hardware/engineering, from ConsDB, the Scheduler `observatoryStatus` WEATHER flag, the allskycam, the narrative log and the night reports (the nowcast proxy only where the allskycam has no coverage).
 3. Consistency check of the Scheduler WEATHER flag (published since 2026-02-25) against the allskycam, telemetry, dome shutter, narrative log and night reports; §4.1 gates the allskycam on astrometric quality and validates it against LSSTCam `visit1_quicklook` zero points; §4.2 calibrates allskycam and nowcast thresholds to the flag; §4.5 adds DREAM (the summit photometric cloud monitor, Jun 2025 → Jun 2026) as a second sky instrument, checked against the allskycam cell by cell, against LSSTCam zero points at every pointing, and against the flag.
-4. Long-baseline nightly weather-loss fraction (allskycam 2021–26, EFD 2019–26, CTIO cloud DB 1975–2022) → mean / median / stdev / monthly table for scheduler simulations. Headline: **0.17** of dark time at cloud index > 0.3 (0.19 with RH/dew-point/wind limits), **0.13** at > 0.5 (operators' de-facto closing threshold); CTIO default 0.25; nowcast proxy 0.155 withdrawn.
+Since 2026-11-06 (sp_notebooks PR #29 review) the downtime notebook covers items 1–3 only; the allskycam validation against LSSTCam zero points and DREAM moved to `allsky_cloud_analysis.ipynb` (§2.2, §3.1).
 
-Outputs: `data/weather_downtime_results.json` (now with a `dream` block), `data/dream_nightly.parquet`, `data/weather_downtime_monthly_climatology.csv`, `data/nightly_attribution_20250415_20260713.parquet` (now with `class`, `class_nowcast`, `cam_frac`, `cam_frac50`, `cam_proxy_h`, `nowcast_proxy_h`).
+## Weather-downtime climatology for the scheduler simulations (record)
+
+`weather_downtime_climatology.ipynb` (here) holds item 4, the long-baseline nightly weather-loss fraction (allskycam 2021–26, EFD 2019–26, CTIO cloud DB 1975–2022) → mean / median / stdev / monthly table for the scheduler simulations. It was §5 of the downtime notebook and §7 of the allskycam notebook, and moved here on 2026-11-06 as a record of the inputs forwarded to the Scheduler team in October 2026; it is not part of ROSP-11. Headline as forwarded: **0.15** of dark time at cloud index > 0.3 (0.16 with RH/dew-point/wind limits), **0.12** at > 0.5 (operators' de-facto closing threshold), ± 0.05 year to year; CTIO default 0.25.
+
+Outputs (all under `$SYSTEM_PERFORMANCE_DATA_DIR`, written only with `ROSP11_WRITE_RESULTS=1`):
+- downtime notebook: `weather_downtime_results.json`, `nightly_attribution_20250415_20260713.parquet`, and the climatology inputs `weather_proxy_nightly_2019_2026.parquet`, `allskycam_gated_nightly.parquet`;
+- climatology notebook: `weather_downtime_monthly_climatology.csv` (read by the allskycam notebook's §5), `weather_downtime_climatology_results.json`;
+- allskycam notebook: `allsky_cloud_results.json` (with a `dream` block), `allsky_monthly_cloud_climatology.csv`, `allsky_nightly_summary.parquet`, `dream_nightly.parquet`.
+
+Run order after a re-reduction: downtime → climatology → allskycam (`rerun_notebooks.sh` in rubin_allskycam does this).
 
 ### Rebuilding the caches (under `$SYSTEM_PERFORMANCE_DATA_DIR`, default `data/`; parquet/CSV are git-ignored)
 
@@ -34,4 +43,4 @@ $PY -E build_dream_dense.py     # every DREAM cloud_sys map from the LFA (387k, 
 
 Needs authorized PostgreSQL credentials through the `PGPASSFILE` environment variable,
 plus `CONSDB_HOST` and `CONSDB_USER`; EFD access is selected with `EFD_CLIENT_NAME`.
-Run the notebooks with nbclient / the lsst-scipipe-13.0.0 kernel (`rerun_notebooks.sh` in rubin_allskycam runs both); they read only the caches and run in ~1 min.
+Run the notebooks with nbclient / the lsst-scipipe-13.0.0 kernel (`rerun_notebooks.sh` in rubin_allskycam runs all three); they read only the caches and run in ~1 min.
