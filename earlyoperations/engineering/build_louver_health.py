@@ -17,6 +17,9 @@ Outputs (engineering/data/, gitignored):
   louver_coarse_<tag>.parquet     10-min last() of positionActual0-33, encoderHeadCalibrated0-67
   louver_moves_<tag>.parquet      full-rate telemetry around each move group (active louvers)
   louver_<name>_<yyyymmdd>.parquet  continuous full-rate telemetry for one louver over an EPISODE
+  louver_brakes_<tag>.parquet     logevent_brakesEngaged (bitmask; bit n = ts_xml Brake enum value n)
+  louver_cmds_<tag>.parquet       louver commands / mode events (closeLouvers, setLouvers, exitFault,
+                                  setOperationalMode, operationalMode, resetDrivesLouvers) as kind/detail rows
 
 Run:  python3 -E build_louver_health.py   (from engineering/)
 """
@@ -135,6 +138,34 @@ async def moves(client, ev):
     return pd.concat(out).sort_index()
 
 
+async def control(client):
+    """Brake bitmask plus the commands/mode changes that drive the louvers, as one tidy table."""
+    br = await fetch_chunked(client, "lsst.sal.MTDome.logevent_brakesEngaged", ["brakes"])
+    br["brakes"] = br["brakes"].astype("int64")
+    rows = []
+
+    def add(df, kind, fmt):
+        for t, r in df.iterrows():
+            rows.append(dict(time=t, kind=kind, detail=fmt(r)))
+
+    pos = [f"position{i}" for i in ACTIVE]
+    add(await fetch_chunked(client, "lsst.sal.MTDome.command_setLouvers", pos), "setLouvers",
+        lambda r: " ".join(f"{i}={r[f'position{i}']:g}" for i in ACTIVE))
+    for k in ("closeLouvers", "exitFault"):
+        add(await fetch_chunked(client, f"lsst.sal.MTDome.command_{k}", ["private_seqNum"]), k, lambda r: "")
+    add(await fetch_chunked(client, "lsst.sal.MTDome.command_setOperationalMode",
+                            ["operationalMode", "subSystemIds"]), "setOperationalMode",
+        lambda r: f"mode={int(r.operationalMode)} subsys={int(r.subSystemIds)}")
+    add(await fetch_chunked(client, "lsst.sal.MTDome.logevent_operationalMode",
+                            ["operationalMode", "subSystemId"]), "operationalMode",
+        lambda r: f"mode={int(r.operationalMode)} subsys={int(r.subSystemId)}")
+    add(await fetch_chunked(client, "lsst.sal.MTDome.command_resetDrivesLouvers",
+                            [f"reset{j}" for j in range(68)]), "resetDrivesLouvers",
+        lambda r: " ".join(str(j) for j in range(68) if r[f"reset{j}"]))
+    cmds = pd.DataFrame(rows).set_index("time").sort_index()
+    return br, cmds
+
+
 async def main():
     client = EfdClient("usdf_efd")
 
@@ -171,6 +202,13 @@ async def main():
             df = await client.select_time_series(TOPIC, fields=f, start=Time(t0), end=Time(t1))
             df.to_parquet(p)
             print(f"[episode] {nm} {len(df)} rows -> {p.name}")
+
+    p = OUT / f"louver_brakes_{TAG}.parquet"
+    if not p.exists():
+        br, cmds = await control(client)
+        br.to_parquet(p)
+        cmds.to_parquet(OUT / f"louver_cmds_{TAG}.parquet")
+        print(f"[control] brakes {len(br)}, commands/mode events {len(cmds)}")
 
     p = OUT / f"louver_coarse_{TAG}.parquet"
     if not p.exists():
